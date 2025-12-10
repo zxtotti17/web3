@@ -8,7 +8,7 @@ import (
 )
 
 // 值增加10
-func Class2(p *int) {
+func Class2_1(p *int) {
 	*p += 10
 }
 
@@ -150,9 +150,9 @@ func Class2_8() {
 	fmt.Println("Class2_8 Count:", count)
 }
 
-func main() {
+func Class2() {
 	calss2 := 1
-	Class2(&calss2)
+	Class2_1(&calss2)
 	fmt.Println("Class2:", calss2)
 
 	nums := []int{1, 2, 3, 4, 5}
