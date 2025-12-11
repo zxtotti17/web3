@@ -9,7 +9,11 @@ func SingleNumber(nums []int) int {
 	map_v := make(map[int]int)
 	m := 0
 	for _, num := range nums {
-		map_v[num]++
+		if _, ok := map_v[num]; !ok {
+			map_v[num] = 1
+		} else {
+			map_v[num]++
+		}
 	}
 	for k, v := range map_v {
 		if v == 1 {

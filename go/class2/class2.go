@@ -21,28 +21,37 @@ func Class2_2(p *[]int) {
 
 // go 关键字启动两个协程，一个协程打印从1到10的奇数，另一个协程打印从2到10的偶数
 func Class2_3() {
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
+		defer wg.Done()
 		for i := 1; i <= 10; i += 2 {
 			fmt.Println(i)
 		}
 	}()
 	go func() {
+		defer wg.Done()
 		for i := 2; i <= 10; i += 2 {
 			fmt.Println(i)
 		}
 	}()
+	wg.Wait()
 }
 
 // 设计一个任务调度器，接收一组任务（可以用函数表示），并使用协程并发执行这些任务，同时统计每个任务的执行时间
 func Class2_4(tasks []func()) {
+	var wg sync.WaitGroup
 	for num, task := range tasks {
+		wg.Add(1)
 		go func(task func()) {
+			defer wg.Done()
 			start := time.Now()
 			task()
 			end := time.Now()
 			fmt.Println("task" + fmt.Sprintf("%d", num+1) + "执行时间:" + end.Sub(start).String())
 		}(task)
 	}
+	wg.Wait()
 }
 
 // 定义一个 Shape 接口，包含 Area() 和 Perimeter() 两个方法。然后创建 Rectangle 和 Circle 结构体，实现 Shape 接口。在主函数中，创建这两个结构体的实例，并调用它们的 Area() 和 Perimeter() 方法
@@ -123,8 +132,11 @@ func Class2_6() {
 func Class2_7() {
 	var count int
 	var mutex sync.Mutex
+	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for j := 0; j < 1000; j++ {
 				mutex.Lock()
 				count++
@@ -132,21 +144,24 @@ func Class2_7() {
 			}
 		}()
 	}
-	time.Sleep(1 * time.Second)
+	wg.Wait()
 	fmt.Println("Class2_7 Count:", count)
 }
 
 // 使用原子操作（ sync/atomic 包）实现一个无锁的计数器。启动10个协程，每个协程对计数器进行1000次递增操作，最后输出计数器的值。
 func Class2_8() {
 	var count int32
+	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for j := 0; j < 1000; j++ {
 				atomic.AddInt32(&count, 1)
 			}
 		}()
 	}
-	time.Sleep(1 * time.Second)
+	wg.Wait()
 	fmt.Println("Class2_8 Count:", count)
 }
 
