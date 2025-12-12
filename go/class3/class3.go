@@ -70,6 +70,8 @@ func Class3_1() {
 	sqlDB, err := db.DB()
 	if err != nil {
 		// 处理错误
+		fmt.Println("insert database error")
+		return
 	}
 	defer sqlDB.Close()
 }
@@ -87,6 +89,7 @@ func Class3_2() {
 	err = db.Preload("Posts.Comments").First(&result, User{Name: "Alice"}).Error
 	if err != nil {
 		fmt.Println("Failed to query user")
+		return
 	}
 
 	fmt.Printf("User: %s (ID: %d)\n", result.Name, result.ID)
@@ -99,12 +102,14 @@ func Class3_2() {
 
 	//使用Gorm查询评论数量最多的文章信息
 	var postMax Post
-	db.Model(&Post{}).Select("posts.*, COUNT(comments.id) AS count").Joins("left join comments on posts.id = comments.post_id").Group("posts.id").Order("count DESC").First(&postMax)
+	db.Model(&Post{}).Select("posts.*, COUNT(comments.id) AS count").Joins("left join comments on posts.id = comments.post_id").Group("posts.id").Order("count DESC").Limit(1).First(&postMax)
 	fmt.Println(postMax.Title, postMax.CommentNum, postMax.UserID, postMax.Comments)
 
 	sqlDB, err := db.DB()
 	if err != nil {
 		// 处理错误
+		fmt.Println("select database error")
+		return
 	}
 	defer sqlDB.Close()
 }
