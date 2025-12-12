@@ -37,10 +37,11 @@ type Comment struct {
 
 // 使用Gorm创建这些模型对应的数据库表
 func Class3_1() {
-	dns := "root:123456@/(localhost:3306)/zm4?charset=utf8&parseTime=True&loc=Local"
+	dns := "root:123456@tcp(localhost:3306)/zm4?charset=utf8&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dns), &gorm.Config{})
 	if err != nil {
 		fmt.Println("Failed to connect to database")
+		return
 	}
 
 	// 创建 User 表
@@ -75,7 +76,7 @@ func Class3_1() {
 
 // 使用Gorm查询某个用户发布的所有文章及其对应的评论信息
 func Class3_2() {
-	dns := "root:123456@/(localhost:3306)/zm4?charset=utf8&parseTime=True&loc=Local"
+	dns := "root:123456@tcp(localhost:3306)/zm4?charset=utf8&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dns), &gorm.Config{})
 	if err != nil {
 		fmt.Println("Failed to connect to database")
