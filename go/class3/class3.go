@@ -48,16 +48,16 @@ func Class3_1() {
 	db.AutoMigrate(&User{}, &Post{}, &Comment{})
 	u1 := User{Name: "Alice", Email: "alice@example.com", Password: "123456"}
 	u2 := User{Name: "Bob", Email: "bob@example.com", Password: "654321"}
-	db.Create(&u1)
-	db.Create(&u2)
+	db.Omit("PostNum").Create(&u1)
+	db.Omit("PostNum").Create(&u2)
 
 	// 创建 Post 表
 	p1 := Post{Title: "Post 1", Description: "This is the first post", UserID: u1.ID}
 	p2 := Post{Title: "Post 2", Description: "This is the second post", UserID: u2.ID}
 	p3 := Post{Title: "Post 3", Description: "This is the first post", UserID: u1.ID}
-	db.Create(&p1)
-	db.Create(&p2)
-	db.Create(&p3)
+	db.Omit("CommentNum").Create(&p1)
+	db.Omit("CommentNum").Create(&p2)
+	db.Omit("CommentNum").Create(&p3)
 
 	// 创建 Comment 表
 	c1 := Comment{PostID: p1.ID, UserID: u1.ID, Content: "Good job!"}
@@ -99,8 +99,8 @@ func Class3_2() {
 
 	//使用Gorm查询评论数量最多的文章信息
 	var postMax Post
-	db.Model(&Comment{}).Select("post_id, COUNT(*) AS count").Group("post_id").Order("count DESC").First(&postMax)
-	fmt.Println(postMax.Title)
+	db.Model(&Post{}).Select("posts.*, COUNT(comments.id) AS count").Joins("left join comments on posts.id = comments.post_id").Group("posts.id").Order("count DESC").First(&postMax)
+	fmt.Println(postMax.Title, postMax.CommentNum, postMax.UserID, postMax.Comments)
 
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -112,7 +112,7 @@ func Class3_2() {
 // 为 Post 模型添加一个钩子函数，在文章创建时自动更新用户的文章数量统计字段
 func (p *Post) BeforeCreate(tx *gorm.DB) error {
 	// 增加用户的文章计数
-	if err := tx.Model(&User{}).Where("id = ?", p.UserID).UpdateColumn("PostNum", gorm.Expr("PostNum + ?", 1)).Error; err != nil {
+	if err := tx.Model(&User{}).Where("id = ?", p.UserID).UpdateColumn("PostNum", gorm.Expr("post_num + ?", 1)).Error; err != nil {
 		return err
 	}
 	return nil
@@ -121,7 +121,7 @@ func (p *Post) BeforeCreate(tx *gorm.DB) error {
 // 为 Comment 模型添加一个钩子函数，在评论创建时自动更新文章的评论数量统计字段
 func (c *Comment) BeforeCreate(tx *gorm.DB) error {
 	// 增加文章的评论计数
-	if err := tx.Model(&Post{}).Where("id = ?", c.PostID).UpdateColumn("CommentNum", gorm.Expr("CommentNum + ?", 1)).Error; err != nil {
+	if err := tx.Model(&Post{}).Where("id = ?", c.PostID).UpdateColumn("CommentNum", gorm.Expr("comment_num + ?", 1)).Error; err != nil {
 		return err
 	}
 	return nil
