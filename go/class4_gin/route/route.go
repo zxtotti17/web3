@@ -24,11 +24,13 @@ func Routers() *gin.Engine {
 	// auth.POST("/logout", Logout)
 
 	userG.POST("/addPost", user.DddPost)
-	userG.GET("/GetPost", user.GetPost)
-	userG.GET("/GetPostList", user.GetPostList)
+	Router.GET("/GetPost", user.GetPost)
+	Router.GET("/GetPostList", user.GetPostList)
 	userG.POST("/updatePost", user.SetPostInfo)
 	userG.POST("/deletePost", user.DeletePost)
 	userG.POST("/addComment", user.AddPostComment)
+
+	Router.POST("/getComments", user.GetPostComments)
 
 	userG.Use(utils.JWTAuth())
 
