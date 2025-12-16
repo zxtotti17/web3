@@ -10,16 +10,17 @@ import (
 
 func GormMysql() *gorm.DB {
 	m := &models.MysqlCfg{
-		Url:          "root:123456@/(localhost:3306)/zm4?charset=utf8&parseTime=True&loc=Local",
+		DSN:          "root:123456@tcp(localhost:3306)/zm4?charset=utf8&parseTime=True&loc=Local",
 		MaxIdleConns: 10,
 		MaxOpenConns: 100,
 		Engine:       "InnoDB",
+		Dbname:       "zm4",
 	}
 	if m.Dbname == "" {
 		return nil
 	}
 	mysqlConfig := mysql.Config{
-		DSN:                       m.Url, // DSN data source name
+		DSN:                       m.DSN, // DSN data source name
 		DefaultStringSize:         191,   // string 类型字段的默认长度
 		SkipInitializeWithVersion: false, // 根据版本自动配置
 	}

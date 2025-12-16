@@ -1,32 +1,30 @@
 package models
 
 import (
+	"github.com/dgrijalva/jwt-go"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 var (
-	Logger     *zap.Logger
-	Db         *gorm.DB
-	PrivateKey string = "zx123456"
+	Logger    *zap.Logger
+	Db        *gorm.DB
+	JwtSecret = "zx123456"
 )
 
 type CustomClaims struct {
 	Uid      uint   `json:"uid"`      // 自定义字段：用户 ID
 	UserName string `json:"username"` // 自定义字段：用户名
-	Exp      int64  `json:"exp"`      // 自定义字段：过期时间
-}
-
-// Valid implements jwt.Claims.
-func (c *CustomClaims) Valid() error {
-	panic("unimplemented")
+	Exp      int64  `json:"exp"`      // 过期时间
+	// Exp      int64  `json:"exp"`      // 过期时间
+	jwt.StandardClaims
 }
 
 type User struct {
 	gorm.Model
-	UserName string `gorm:"index" json:"username" form:"username" binding:"required,min=2"`
-	Email    string
-	Password string    `gorm:"not null" json:"password" form:"password" binding:"required,contains=!@#"`
+	UserName string    `gorm:"index" json:"username" form:"username" binding:"required,min=2"`
+	Email    string    `json:"email" form:"email"`
+	Password string    `gorm:"not null" json:"password" form:"password" binding:"required,contains=#,min=6"`
 	PostNum  uint      `gorm:"default:0"`
 	Posts    []Post    `gorm:"foreignKey:UserID"`
 	Comments []Comment `gorm:"foreignKey:UserID"`
@@ -53,7 +51,7 @@ type Comment struct {
 }
 
 type MysqlCfg struct {
-	Url          string
+	DSN          string
 	Dbname       string
 	MaxIdleConns int
 	MaxOpenConns int
@@ -62,16 +60,26 @@ type MysqlCfg struct {
 	Engine       string
 }
 
+type RegisterMsg struct {
+	UserName string `json:"username" form:"username" binding:"required,min=2"`
+	Email    string `json:"email" form:"email" binding:"required,email"`
+	Password string `json:"password" form:"password" binding:"required,contains=!@#$%^&*,min=6"`
+}
+
 type LoginResponse struct {
-	User      CustomClaims `json:"user"`
-	Token     string       `json:"token"`
-	ExpiresAt int64        `json:"expiresAt"`
+	User  CustomClaims `json:"user"`
+	Token string       `json:"token"`
 }
 
 type Response struct {
 	Code int         `json:"code"`
 	Data interface{} `json:"data"`
 	Msg  string      `json:"msg"`
+}
+
+type AddPostMsg struct {
+	Title   string `json:"title" form:"title" binding:"required"`
+	Content string `json:"content" form:"content" binding:"required"`
 }
 
 type PostInfoMsg struct {

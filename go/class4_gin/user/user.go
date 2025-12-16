@@ -2,7 +2,7 @@ package user
 
 import (
 	"net/http"
-	"time"
+	"strconv"
 
 	"class4_gin/models"
 	"class4_gin/utils"
@@ -16,7 +16,7 @@ import (
 func Register(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"param error": err.Error()})
 		return
 	}
 	if err := models.Db.First(models.User{UserName: user.UserName}); err == nil {
@@ -55,7 +55,7 @@ func Login(c *gin.Context) {
 
 	// 验证密码
 	if err := bcrypt.CompareHashAndPassword([]byte(storedUser.Password), []byte(user.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid username or password"})
 		return
 	}
 
@@ -63,24 +63,31 @@ func Login(c *gin.Context) {
 	// 剩下的逻辑...
 	returnUser, tokenString := utils.LoginToken(storedUser, c)
 	c.JSON(http.StatusOK, models.LoginResponse{
-		User:      returnUser,
-		Token:     tokenString,
-		ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
+		User:  returnUser,
+		Token: tokenString,
 	})
 }
 
 func DddPost(c *gin.Context) {
-	claims := c.MustGet("claims").(models.CustomClaims)
-	title := c.Params.ByName("title")
-	content := c.Params.ByName("content")
-	if title == "" || content == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Title and content cannot be empty"})
+	value, exists := c.Get("claims")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	claims, ok := value.(*models.CustomClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	var addPost models.AddPostMsg
+	if err := c.ShouldBindJSON(&addPost); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	post := models.Post{
-		Title:   title,
-		Content: content,
+		Title:   addPost.Title,
+		Content: addPost.Content,
 		UserID:  claims.Uid,
 	}
 
@@ -93,14 +100,14 @@ func DddPost(c *gin.Context) {
 }
 
 func GetPost(c *gin.Context) {
-	var post models.PostInfoMsg
-	if err := c.ShouldBindJSON(&post); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
 	var postInfo models.Post
-	if err := models.Db.Where("id = ?", postInfo.ID).First(&postInfo).Error; err != nil {
+	if err := models.Db.Where("id = ?", id).First(&postInfo).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid ID"})
 		return
 	}

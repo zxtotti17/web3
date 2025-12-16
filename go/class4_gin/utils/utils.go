@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -44,15 +45,17 @@ func LoginToken(user models.User, c *gin.Context) (claims models.CustomClaims, t
 	claims = models.CustomClaims{
 		Uid:      user.ID,
 		UserName: user.UserName,
-		Exp:      time.Now().Add(time.Hour * 24).Unix(),
+		Exp:      time.Now().Add(24 * time.Hour).Unix(), // 24小时后过期
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(24 * time.Hour).Unix(), // 24小时后过期
+			IssuedAt:  time.Now().Unix(),
+			Issuer:    "class4_gin",
+			Subject:   "user token",
+		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":       claims.Uid,
-		"username": claims.UserName,
-		"exp":      claims.Exp,
-	})
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenString, err := token.SignedString([]byte(models.PrivateKey))
+	tokenString, err := token.SignedString([]byte(models.JwtSecret))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -88,7 +91,7 @@ func ClearToken(c *gin.Context) {
 
 func ParseToken(tokenString string) (*models.CustomClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &models.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(models.PrivateKey), nil
+		return []byte(models.JwtSecret), nil
 	})
 	if err != nil {
 		return nil, err
@@ -111,17 +114,25 @@ func JWTAuth() gin.HandlerFunc {
 
 		// parseToken 解析token包含的信息
 		claims, err := ParseToken(token)
+		fmt.Println("中间件执行", err, claims)
 		if err != nil || claims == nil {
+			NoAuth(err.Error(), c)
+			ClearToken(c)
+			c.Abort()
+			return
+		} else {
 			if claims.Exp < time.Now().Unix() {
 				NoAuth("授权已过期", c)
 				ClearToken(c)
 				c.Abort()
 				return
 			}
-			NoAuth(err.Error(), c)
-			ClearToken(c)
-			c.Abort()
-			return
+			if claims.Uid == 0 {
+				NoAuth("用户不存在", c)
+				ClearToken(c)
+				c.Abort()
+				return
+			}
 		}
 
 		// 已登录用户被管理员禁用 需要使该用户的jwt失效 此处比较消耗性能 如果需要 请自行打开
@@ -132,6 +143,7 @@ func JWTAuth() gin.HandlerFunc {
 		//	response.FailWithDetailed(gin.H{"reload": true}, err.Error(), c)
 		//	c.Abort()
 		//}
+		models.Logger.Info("claims", zap.Any("claims", claims))
 		c.Set("claims", claims)
 		c.Next()
 
