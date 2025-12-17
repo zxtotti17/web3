@@ -68,7 +68,7 @@ func Login(c *gin.Context) {
 	})
 }
 
-func DddPost(c *gin.Context) {
+func authUser(c *gin.Context) (claims *models.CustomClaims) {
 	value, exists := c.Get("claims")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -79,6 +79,11 @@ func DddPost(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
+	return claims
+}
+
+func DddPost(c *gin.Context) {
+	claims := authUser(c)
 	var addPost models.AddPostMsg
 	if err := c.ShouldBindJSON(&addPost); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -123,15 +128,15 @@ func GetPostList(c *gin.Context) {
 	}
 	var postList []models.Post
 	offset := int((listMsg.Page - 1) * listMsg.Size)
-	if err := models.Db.Limit(int(listMsg.Size)).Offset(offset).First(&postList).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "GetPostList"})
+	if err := models.Db.Limit(int(listMsg.Size)).Offset(offset).Find(&postList).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": " read DB GetPostList"})
 		return
 	}
 
 	var count int64
 	if listMsg.Page == 1 {
-		if err := models.Db.Count(&count).First(&postList).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "GetPostList"})
+		if err := models.Db.Model(postList).Count(&count).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "total GetPostList"})
 			return
 		}
 	}
@@ -154,7 +159,7 @@ func SetPostInfo(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid ID"})
 		return
 	}
-	claims := c.MustGet("claims").(models.CustomClaims)
+	claims := authUser(c)
 
 	if post.UserID != claims.Uid {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to update this post"})
@@ -178,11 +183,11 @@ func DeletePost(c *gin.Context) {
 	}
 
 	var postInfo models.Post
-	if err := models.Db.Where("id = ?", postInfo.ID).First(&postInfo).Error; err != nil {
+	if err := models.Db.Where("id = ?", post.PostID).First(&postInfo).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid ID"})
 		return
 	}
-	claims := c.MustGet("claims").(models.CustomClaims)
+	claims := authUser(c)
 
 	if postInfo.UserID != claims.Uid {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to delete this post"})
@@ -202,7 +207,13 @@ func AddPostComment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	claims := c.MustGet("claims").(models.CustomClaims)
+	claims := authUser(c)
+
+	var postInfo models.Post
+	if err := models.Db.Where("id = ?", comment.PostID).First(&postInfo).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid ID"})
+		return
+	}
 
 	comment.UserID = claims.Uid
 

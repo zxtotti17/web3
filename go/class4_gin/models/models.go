@@ -16,7 +16,6 @@ type CustomClaims struct {
 	Uid      uint   `json:"uid"`      // 自定义字段：用户 ID
 	UserName string `json:"username"` // 自定义字段：用户名
 	Exp      int64  `json:"exp"`      // 过期时间
-	// Exp      int64  `json:"exp"`      // 过期时间
 	jwt.StandardClaims
 }
 
@@ -25,29 +24,29 @@ type User struct {
 	UserName string    `gorm:"index" json:"username" form:"username" binding:"required,min=2"`
 	Email    string    `json:"email" form:"email"`
 	Password string    `gorm:"not null" json:"password" form:"password" binding:"required,contains=#,min=6"`
-	PostNum  uint      `gorm:"default:0"`
-	Posts    []Post    `gorm:"foreignKey:UserID"`
-	Comments []Comment `gorm:"foreignKey:UserID"`
+	PostNum  uint      `gorm:"default:0" json:"post_num"`
+	Posts    []Post    `gorm:"foreignKey:UserID" json:"posts"`
+	Comments []Comment `gorm:"foreignKey:UserID" json:"comments"`
 }
 
 type Post struct {
 	gorm.Model
-	Title      string    `gorm:"type:varchar(200);not null"`
-	Content    string    `gorm:"type:text;not null"`
-	UserID     uint      `gorm:"index"`
-	CommentNum uint      `gorm:"default:0"`
-	Comments   []Comment `gorm:"foreignKey:PostID"`
-	User       User      `gorm:"foreignKey:UserID"`
+	Title      string    `gorm:"type:varchar(200);not null" json:"title" form:"title"`
+	Content    string    `gorm:"type:text;not null" json:"content" form:"content"`
+	UserID     uint      `gorm:"index" json:"user_id" form:"user_id"`
+	CommentNum uint      `gorm:"default:0" json:"comment_num" form:"comment_num"`
+	Comments   []Comment `gorm:"foreignKey:PostID" json:"comments" binding:"-"`
+	User       User      `gorm:"foreignKey:UserID" json:"user" binding:"-"`
 }
 
 type Comment struct {
 	gorm.Model
-	UserID uint `gorm:"index"`
+	UserID uint `gorm:"index" json:"user_id" form:"user_id"`
 	PostID uint `gorm:"index" json:"post_id" form:"post_id" binding:"required"`
 	//IndexName string `gorm:"index:idx_comment_post_user"` // 联合索引
 	Content string `gorm:"type:varchar(5000);not null" json:"content" form:"content" binding:"required"`
-	User    User   `gorm:"foreignKey:UserID"`
-	Post    Post   `gorm:"foreignKey:PostID"`
+	User    User   `gorm:"foreignKey:UserID" json:"user" binding:"-"`
+	Post    Post   `gorm:"foreignKey:PostID" json:"post" binding:"-"`
 }
 
 type MysqlCfg struct {
