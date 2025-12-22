@@ -27,6 +27,7 @@ type BlockInfo struct {
 
 type Config struct {
 	PrivateKeyHex string `json:"privateKeyHex"`
+	CounterHex    string `json:"CounterHex"`
 }
 
 func Main() {
@@ -92,7 +93,7 @@ func Main() {
 	etherBalance := new(big.Float).Quo(new(big.Float).SetInt(balance), big.NewFloat(1e18))
 	fmt.Printf("余额: %.6f ETH\n", etherBalance)
 
-	class5_1(client, config.PrivateKeyHex)
+	class5_1(client, config.PrivateKeyHex, config.CounterHex)
 }
 
 // getBlockInfo 获取指定区块号的区块信息
@@ -118,7 +119,7 @@ func getBlockInfo(client *ethclient.Client, blockNumber *big.Int) (*BlockInfo, e
 	return blockInfo, nil
 }
 
-func class5_1(client *ethclient.Client, privateKeyHex string) {
+func class5_1(client *ethclient.Client, privateKeyHex string, CounterHex string) {
 	// 发送方私钥 (请替换为你的私钥)
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
@@ -142,10 +143,10 @@ func class5_1(client *ethclient.Client, privateKeyHex string) {
 	}
 
 	// 设置转账金额 (0.001 ETH)
-	value := big.NewInt(100000) // 0.001 ETH (单位: wei)
+	value := big.NewInt(100000000) // 0.001 ETH (单位: wei)
 
 	// 设置Gas限制
-	gasLimit := uint64(21000)
+	gasLimit := uint64(1000000)
 
 	// 获取Gas价格
 	gasPrice, err := client.SuggestGasPrice(context.Background())
@@ -180,35 +181,37 @@ func class5_1(client *ethclient.Client, privateKeyHex string) {
 	fmt.Printf("接收方: %s\n", toAddress.Hex())
 	fmt.Printf("转账金额: %s ETH\n", weiToEther(value))
 
-	// class5_2
+	// class5_2 部署合约
 	// 获取发送方nonce_2
-	nonce_2, err2 := client.PendingNonceAt(context.Background(), fromAddress)
-	if err2 != nil {
-		log.Fatal("获取nonce2失败:", err2)
-	}
+	// nonce_2, err2 := client.PendingNonceAt(context.Background(), fromAddress)
+	// if err2 != nil {
+	// 	log.Fatal("获取nonce2失败:", err2)
+	// }
 
-	chainID2, err2 := client.NetworkID(context.Background())
-	if err2 != nil {
-		log.Fatal("获取链ID失败:", err)
-	}
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID2)
-	if err != nil {
-		log.Fatal(err)
-	}
-	auth.Nonce = big.NewInt(int64(nonce_2))
-	auth.Value = big.NewInt(0)     // in wei
-	auth.GasLimit = uint64(300000) // in units
-	auth.GasPrice = gasPrice
+	// chainID2, err2 := client.NetworkID(context.Background())
+	// if err2 != nil {
+	// 	log.Fatal("获取链ID失败:", err)
+	// }
+	// auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID2)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// auth.Nonce = big.NewInt(int64(nonce_2))
+	// auth.Value = big.NewInt(0)     // in wei
+	// auth.GasLimit = uint64(300000) // in units
+	// auth.GasPrice = gasPrice
 
-	// input := "1.0"
-	address, tx, instance, err := DeployClass5(auth, client)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// // input := "1.0"
+	// address, tx, instance, err := DeployClass5(auth, client)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	fmt.Println(address.Hex())
-	fmt.Println(tx.Hash().Hex())
-	_ = instance
+	// fmt.Println("部署的合约地址", address.Hex())
+	// fmt.Println("部署的交易哈希", tx.Hash().Hex())
+	// _ = instance
+
+	class5_2(privateKeyHex, CounterHex, client)
 }
 
 // weiToEther 将wei转换为ether
@@ -218,4 +221,44 @@ func weiToEther(wei *big.Int) *big.Float {
 	f.SetInt(wei)
 	ether := new(big.Float).Quo(f, big.NewFloat(1e18))
 	return ether
+}
+
+func class5_2(privateKeyHex string, contractAddr string, client *ethclient.Client) {
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	if err != nil {
+		log.Fatal("私钥解析失败:", err)
+	}
+	storeContract, err := NewClass5(common.HexToAddress(contractAddr), client)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	chainId, err2 := client.NetworkID(context.Background())
+	if err2 != nil {
+		log.Fatal("获取链ID失败:", err)
+	}
+	opt, err := bind.NewKeyedTransactorWithChainID(privateKey, chainId)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 调用合约方法
+	tx, err := storeContract.Inc(opt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("tx hash:", tx.Hash().Hex())
+
+	tx2, err2 := storeContract.IncBy(opt, big.NewInt(100))
+	if err2 != nil {
+		log.Fatal(err2)
+	}
+	fmt.Println("tx2 hash:", tx2.Hash().Hex())
+
+	callOpt := &bind.CallOpts{Context: context.Background()}
+	valueInContract, err := storeContract.Get(callOpt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("is value saving in contract", valueInContract)
 }
